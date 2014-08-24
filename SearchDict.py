@@ -73,4 +73,5 @@ def moveFile(oldFullname, newName, path = None, **argvs):
     createDirectory(path)
     os.rename(oldFullname, path + "/" + newFullname)
 
-main()
+if __name__ == "__main__":
+  main()
