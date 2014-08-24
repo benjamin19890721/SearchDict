@@ -1,7 +1,7 @@
-How to Use
+The following function search the word "english" through the "youdao" engine and store it in the "en" directory under the script folder.
 
 ```
-downloadAudio(keyword, engine, path = None)
+downloadAudio("english", "youdao", path = "en")
 ```
 
 
