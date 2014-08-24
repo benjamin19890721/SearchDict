@@ -7,13 +7,13 @@ import requests, wget, sys, os, re
 MW_KEY = "59a2199b-d3f1-4eda-8c3f-8b1f570a4811"
 
 def main():
-  downloadAudio("korean", "mw", "en")
+  downloadAudio("美味しい", "hj", "ja")
 
 
 def downloadAudio(keyword, engine, path = None):
-  # data processing
-  keyword = unicode(keyword).strip().replace(" ","+")
-  engine = unicode(engine).lower()
+  # if keyword is not unicode, convert it into unicode
+  keyword = keyword.strip().replace(" ","+")
+  engine = engine.lower()
   print 'Try to search "%s" using engine %s' % (keyword, engine)
   
   found, url = audioLink(keyword, engine)
@@ -21,7 +21,8 @@ def downloadAudio(keyword, engine, path = None):
 
   if found == True:
     oldname = wget.download(url) 
-    moveFile(oldname, keyword, path, engine = "youdao")
+    oldname = oldname.encode("utf-8")
+    moveFile(oldname, keyword, path, engine = engine)
   else:
     pass
   
@@ -47,12 +48,30 @@ def audioLink(keyword, engine, **argvs):
       return (True, url)
     else:
       return (False, None)
-  
+
+  # Hujiang (Japenese)
+  elif engine in ["hujiang", "hj"]:
+    query = "http://dict.hjenglish.com/jp/jc/%s" % keyword
+    soup = getSoup(query)
+    url = getHuJiangURL(soup)
+
+    return (True, url)
+
   # Invalid Engine Name
   else:
     return (False, None)
 
+###################################
+### HuJiang.com (Japanese)
+###################################
 
+def getHuJiangURL(soup):
+  rawSoundPath = soup.find(class_="jpSound").find("script").string
+
+  regex = re.compile('GetTTSVoice\("(.*?)"\)[;]?')
+  url = re.match(regex, rawSoundPath).group(1)
+  
+  return url
 
 ###################################
 ### Merriam-Webster 
@@ -164,9 +183,9 @@ def moveFile(oldFullname, newName, path = None, **argvs):
   # get the newfile based on the extension of the old filename
   if "." in oldFullname:
     extention = oldFullname.split(".")[-1]
-    newFullname = u"%s.%s" % (newName, extention)
+    newFullname = "%s.%s" % (newName, extention)
   elif argvs.get("engine") == "youdao":
-    newFullname = u"%s.%s" % (newName, "mp3")
+    newFullname = "%s.%s" % (newName, "mp3")
   else:
     newFullname = newName
 
