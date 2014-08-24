@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 from bs4 import BeautifulSoup
-import requests, wget, sys, os
+import requests, wget, sys, os, re
 
 MW_KEY = "59a2199b-d3f1-4eda-8c3f-8b1f570a4811"
 
 def main():
-  downloadAudio("los+angeles", "mw", "en")
+  downloadAudio("korean", "mw", "en")
 
 
 def downloadAudio(keyword, engine, path = None):
@@ -41,7 +41,8 @@ def audioLink(keyword, engine, **argvs):
     query = "http://www.dictionaryapi.com/api/v1/references/collegiate/xml/%s?key=%s"
     print "Return Query URL: %s" % (query % (keyword, MW_KEY))
     soup = getSoup(query % (keyword, MW_KEY))
-    url = parseMerriamWebsterSoup(soup)
+    url = getMerriamWebsterURL(soup)
+    
     if url != None:
       return (True, url)
     else:
@@ -57,22 +58,72 @@ def audioLink(keyword, engine, **argvs):
 ### Merriam-Webster 
 ###################################
 
-def parseMerriamWebsterSoup(soup):
-
+def parseMerriamWebsterSoup(soup): 
+  result = {}
   if soup.find("suggestion") != None:
-    print "Found no result\nSuggested Words\n"
-    for (index, suggestion) in enumerate(soup.find_all("suggestion")):
-      print "%02i. %s\n" % ((index+1), suggestion.string) 
+    result["status"], result["suggestions"] = "no match", []
+    for suggestion in soup.find_all("suggestion"):
+       result["suggestions"].append(suggestion.string) 
+  else:
+    result["status"], result["entries"] = "found matches", []
+    for entry in soup.find_all("entry"):
+      if (entry.find("sound") == None or
+          entry.find("sound").find("wav") == None):
+        audioName = None
+      else:
+        audioName = entry.find("sound").find("wav").string
+
+      result["entries"].append({
+        "word": entry["id"],
+        "audioName": audioName
+      })   
+
+  return result
+
+def getMerriamWebsterURL(soup):
+
+  results = parseMerriamWebsterSoup(soup)
+
+  if results["status"] == "no match":
+    print "Found no result\nSuggested Words"
+    for (index, suggestion) in enumerate(result["suggestions"]):
+      print "%02i. %s" % ((index+1), suggestion.string) 
     return None
     
-  elif soup.find("sound") == None:
-    print "No audio file has been found."
-    return None
+  elif results["status"] == "found matches":
+    match = results["entries"][0]
+    if match["audioName"] == None:
+      print "No audio file has been found."
+      return None
+    else:
+      audioName = match["audioName"]
+  
+      # According to API, audioName need to be converted to a URL like this:
+      # http://media.merriam-webster.com/soundc11/h/heart001.wav
+
+      # Start with the base URL: http://media.merriam-webster.com/soundc11/
+      # Add the first letter of the wav file as a subdirectory ("h" in the example above).*
+      # Add the name of the wav file.
+      # * Regarding the subdirectory element of the URL there are three exceptions:
+
+      # If the file name begins with "bix", the subdirectory should be "bix".
+      # If the file name begins with "gg", the subdirectory should be "gg".
+      # If the file name begins with a number, the subdirectory should be "number".
+      if re.compile("^gg").match(audioName) != None:
+        subDirName = "gg"
+      elif re.compile("^bix").match(audioName) != None:
+        subDirName = "bix"
+      elif re.compile("^[0-9]").match(audioName) != None:
+        subDirName = "number"
+        raise Exception
+      else:
+        subDirName = audioName[0]
+
+      url = "http://media.merriam-webster.com/soundc11/%s/%s" % (subDirName, audioName)
+      return url 
   
   else:
-    audioName = soup.find("sound").find("wav").string
-    url = "http://media.merriam-webster.com/soundc11/%s/%s" % (audioName[0], audioName)
-    return url    
+    return None
 
 
 ###################################
