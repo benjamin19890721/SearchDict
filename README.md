@@ -1,3 +1,11 @@
+How to Use
+
+```
+downloadAudio(keyword, engine, path = None)
+```
+
+
+
 English
 
 - Youdao: http://dict.youdao.com/dictvoice?audio={keyword}&type={type_index}
